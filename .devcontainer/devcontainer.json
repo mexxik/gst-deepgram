@@ -1,0 +1,24 @@
+{
+    "name": "Deepgram GStreamer Dev",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    "runArgs": [
+        "--env-file",
+        ".env"
+    ],
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.shell.linux": "/bin/bash"
+            },
+            "extensions": [
+                "ms-vscode.cpptools",
+                "ms-vscode.cmake-tools"
+            ],
+        }
+    },
+    "remoteUser": "vscode"
+    // "postCreateCommand": ". /workspaces/gst-deepgram/.env"
+}

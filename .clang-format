@@ -1,0 +1,16 @@
+BasedOnStyle: GNU
+Language: C
+
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+ColumnLimit: 80
+BreakBeforeBraces: GNU
+
+AllowShortFunctionsOnASingleLine: None
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+
+DerivePointerAlignment: false
+PointerAlignment: Left
