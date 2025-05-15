@@ -50,6 +50,13 @@ enum
   PROP_SILENT
 };
 
+enum
+{
+  SIGNAL_TRANSCRIPT,
+  N_SIGNALS
+};
+static guint gst_deepgram_sink_signals[N_SIGNALS] = { 0 };
+
 static GstStaticPadTemplate sink_template
     = GST_STATIC_PAD_TEMPLATE ("sink", GST_PAD_SINK, GST_PAD_ALWAYS,
                                GST_STATIC_CAPS ("audio/x-raw, "
@@ -152,10 +159,14 @@ gst_deepgram_sink_class_init (GstDeepgramSinkClass* klass)
                             "Suppress console logging of transcripts", FALSE,
                             G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  gst_deepgram_sink_signals[SIGNAL_TRANSCRIPT] = g_signal_new (
+      "transcript", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+      NULL, G_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_BOOLEAN);
+
   gst_element_class_set_static_metadata (
       element_class, "DeepgramSink", "Sink/Audio",
       "Sends raw PCM to Deepgram via WebSockets, prints transcripts.",
-      "Your Name <you@example.com>");
+      "Max Golovanchuk <mexxik@gmail.com>");
 
   gst_element_class_add_pad_template (
       element_class, gst_static_pad_template_get (&sink_template));
@@ -512,6 +523,11 @@ gst_deepgram_sink_on_message (SoupWebsocketConnection* conn, gint type,
                                                is_final ? "Final" : "Partial",
                                                transcript);
                                     }
+
+                                  g_signal_emit (self,
+                                                 gst_deepgram_sink_signals
+                                                     [SIGNAL_TRANSCRIPT],
+                                                 0, transcript, is_final);
                                 }
                             }
                         }

@@ -36,6 +36,14 @@ bus_callback (GstBus* bus, GstMessage* msg, gpointer data)
   return TRUE;
 }
 
+static void
+on_transcript (GstElement* sink, gchar* transcript, gboolean is_final,
+               gpointer user_data)
+{
+  g_print ("[APP] %s transcript: %s\n", is_final ? "Final" : "Partial",
+           transcript);
+}
+
 int
 main (int argc, char* argv[])
 {
@@ -74,13 +82,15 @@ main (int argc, char* argv[])
     }
 
   g_object_set (filesrc, "location", filename, NULL);
-  g_object_set (deepgram, "deepgram-api-key", api_key, "silent", FALSE, NULL);
+  g_object_set (deepgram, "deepgram-api-key", api_key, "silent", TRUE, NULL);
 
   gst_bin_add_many (GST_BIN (pipeline), filesrc, decodebin, audioconv, audiores,
                     deepgram, NULL);
 
   g_signal_connect (decodebin, "pad-added", G_CALLBACK (decodebin_pad_added_cb),
                     audioconv);
+
+  g_signal_connect (deepgram, "transcript", G_CALLBACK (on_transcript), NULL);
 
   if (!gst_element_link (filesrc, decodebin))
     {
