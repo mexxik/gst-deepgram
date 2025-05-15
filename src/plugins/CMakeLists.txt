@@ -1,4 +1,5 @@
 add_library(gstdeepgramsink SHARED
+    deepgramws.c
     gstdeepgramsink.c
 )
 
