@@ -26,6 +26,7 @@ struct _GstDeepgramSink
   gchar*   api_key;
   gchar*   model;
   gboolean started;
+  gboolean silent;
 
   SoupSession*             soup_sess;
   SoupWebsocketConnection* ws_conn;
@@ -45,8 +46,16 @@ enum
 {
   PROP_0,
   PROP_API_KEY,
-  PROP_MODEL
+  PROP_MODEL,
+  PROP_SILENT
 };
+
+enum
+{
+  SIGNAL_TRANSCRIPT,
+  N_SIGNALS
+};
+static guint gst_deepgram_sink_signals[N_SIGNALS] = { 0 };
 
 static GstStaticPadTemplate sink_template
     = GST_STATIC_PAD_TEMPLATE ("sink", GST_PAD_SINK, GST_PAD_ALWAYS,
@@ -144,10 +153,20 @@ gst_deepgram_sink_class_init (GstDeepgramSinkClass* klass)
                            "Deepgram model (e.g., 'nova')", "general",
                            G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (
+      gobject_class, PROP_SILENT,
+      g_param_spec_boolean ("silent", "Silent",
+                            "Suppress console logging of transcripts", FALSE,
+                            G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  gst_deepgram_sink_signals[SIGNAL_TRANSCRIPT] = g_signal_new (
+      "transcript", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+      NULL, G_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_BOOLEAN);
+
   gst_element_class_set_static_metadata (
       element_class, "DeepgramSink", "Sink/Audio",
       "Sends raw PCM to Deepgram via WebSockets, prints transcripts.",
-      "Your Name <you@example.com>");
+      "Max Golovanchuk <mexxik@gmail.com>");
 
   gst_element_class_add_pad_template (
       element_class, gst_static_pad_template_get (&sink_template));
@@ -168,6 +187,7 @@ gst_deepgram_sink_init (GstDeepgramSink* self)
   self->started   = FALSE;
   self->soup_sess = NULL;
   self->ws_conn   = NULL;
+  self->silent    = TRUE;
   g_mutex_init (&self->lock);
   g_cond_init (&self->cond);
   self->stop_thread = FALSE;
@@ -194,6 +214,10 @@ gst_deepgram_sink_set_property (GObject* object, guint prop_id,
       self->model = g_value_dup_string (value);
       break;
 
+    case PROP_SILENT:
+      self->silent = g_value_get_boolean (value);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -213,6 +237,10 @@ gst_deepgram_sink_get_property (GObject* object, guint prop_id, GValue* value,
       break;
     case PROP_MODEL:
       g_value_set_string (value, self->model);
+      break;
+
+    case PROP_SILENT:
+      g_value_set_boolean (value, self->silent);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -421,6 +449,8 @@ gst_deepgram_sink_on_message (SoupWebsocketConnection* conn, gint type,
       return;
     }
 
+  GstDeepgramSink* self = GST_DEEPGRAM_SINK (user_data);
+
   gsize         size = 0;
   gconstpointer data = g_bytes_get_data (message, &size);
   if (!data || size == 0)
@@ -486,9 +516,18 @@ gst_deepgram_sink_on_message (SoupWebsocketConnection* conn, gint type,
                                           = json_object_get_boolean_member (
                                               root_obj, "is_final");
                                     }
-                                  g_print ("[deepgramsink] %s: %s\n",
-                                           is_final ? "Final" : "Partial",
-                                           transcript);
+                                  if (!self->silent && transcript
+                                      && *transcript)
+                                    {
+                                      g_print ("[deepgramsink] %s: %s\n",
+                                               is_final ? "Final" : "Partial",
+                                               transcript);
+                                    }
+
+                                  g_signal_emit (self,
+                                                 gst_deepgram_sink_signals
+                                                     [SIGNAL_TRANSCRIPT],
+                                                 0, transcript, is_final);
                                 }
                             }
                         }

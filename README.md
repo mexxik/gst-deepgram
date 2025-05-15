@@ -59,7 +59,7 @@ cmake --build build
 ### Step 4: Run the Example App
 
 ```bash
-GST_PLUGIN_PATH=build ./build/deepgram_test_app /home/vscode/test.wav
+GST_PLUGIN_PATH=build ./build/src/apps/transcribe-basic/transcribe_basic /home/vscode/test.wav
 ```
 
 Output will show Deepgram's transcription results.
