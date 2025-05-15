@@ -74,7 +74,7 @@ main (int argc, char* argv[])
     }
 
   g_object_set (filesrc, "location", filename, NULL);
-  g_object_set (deepgram, "deepgram-api-key", api_key, NULL);
+  g_object_set (deepgram, "deepgram-api-key", api_key, "silent", FALSE, NULL);
 
   gst_bin_add_many (GST_BIN (pipeline), filesrc, decodebin, audioconv, audiores,
                     deepgram, NULL);

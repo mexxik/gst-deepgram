@@ -2,10 +2,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Test",
+            "name": "Transcribe Basic",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/deepgram_test_app",
+            "program": "${workspaceFolder}/build/src/apps/transcribe-basic/transcribe_basic",
             "args": [
                 "/home/vscode/test.wav"
             ],
