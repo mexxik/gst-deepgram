@@ -38,10 +38,20 @@ bus_callback (GstBus* bus, GstMessage* msg, gpointer data)
 
 static void
 on_transcript (GstElement* sink, gchar* transcript, gboolean is_final,
-               gpointer user_data)
+               gdouble start_time, gdouble end_time, gpointer user_data)
 {
-  g_print ("[APP] %s transcript: %s\n", is_final ? "Final" : "Partial",
-           transcript);
+  g_print ("[APP] %s transcript: [%.2f - %.2f] %s\n",
+           is_final ? "Final" : "Partial", start_time, end_time, transcript);
+
+  g_print ("----------------------------------------\n");
+}
+
+static void
+on_word (GstElement* sink, gchar* word_text, gdouble start_time,
+         gdouble end_time, gpointer user_data)
+{
+  g_print ("[APP] Word='%s'  start=%.2f  end=%.2f\n", word_text, start_time,
+           end_time);
 }
 
 int
@@ -91,6 +101,7 @@ main (int argc, char* argv[])
                     audioconv);
 
   g_signal_connect (deepgram, "transcript", G_CALLBACK (on_transcript), NULL);
+  g_signal_connect (deepgram, "word", G_CALLBACK (on_word), NULL);
 
   if (!gst_element_link (filesrc, decodebin))
     {
