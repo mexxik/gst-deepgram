@@ -111,7 +111,13 @@ deepgram_ws_class_init (DeepgramWSClass* klass)
 
   signals[SIGNAL_WS_TRANSCRIPT] = g_signal_new (
       "transcript", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
-      NULL, G_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_BOOLEAN);
+      NULL, G_TYPE_NONE, 4, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_DOUBLE,
+      G_TYPE_DOUBLE);
+
+  signals[SIGNAL_WS_WORD]
+      = g_signal_new ("word", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0,
+                      NULL, NULL, NULL, G_TYPE_NONE, 4, G_TYPE_STRING,
+                      G_TYPE_DOUBLE, G_TYPE_DOUBLE, G_TYPE_DOUBLE);
 }
 
 static void
@@ -460,6 +466,52 @@ deepgram_ws_on_message (SoupWebsocketConnection* conn, gint type,
       return;
     }
 
+  gdouble    transcript_start_time = 0.0;
+  gdouble    transcript_end_time   = 0.0;
+  gboolean   has_start_time        = FALSE;
+  JsonArray* words_arr = json_object_get_array_member (first_alt, "words");
+  if (words_arr)
+    {
+      for (guint i = 0; i < json_array_get_length (words_arr); i++)
+        {
+          JsonObject* word_obj = json_array_get_object_element (words_arr, i);
+          if (!word_obj)
+            continue;
+
+          const gchar* word_text  = NULL;
+          gdouble      start_time = 0.0;
+          gdouble      end_time   = 0.0;
+
+          if (json_object_has_member (word_obj, "word"))
+            {
+              word_text = json_object_get_string_member (word_obj, "word");
+            }
+          if (json_object_has_member (word_obj, "start"))
+            {
+              start_time = json_object_get_double_member (word_obj, "start");
+              if (!has_start_time)
+                {
+                  has_start_time        = TRUE;
+                  transcript_start_time = start_time;
+                }
+            }
+          if (json_object_has_member (word_obj, "end"))
+            {
+              end_time = json_object_get_double_member (word_obj, "end");
+              if (end_time > transcript_end_time)
+                {
+                  transcript_end_time = end_time;
+                }
+            }
+
+          if (word_text && *word_text)
+            {
+              g_signal_emit (self, signals[SIGNAL_WS_WORD], 0, word_text,
+                             start_time, end_time);
+            }
+        }
+    }
+
   const gchar* transcript = NULL;
   if (json_object_has_member (first_alt, "transcript"))
     {
@@ -480,7 +532,7 @@ deepgram_ws_on_message (SoupWebsocketConnection* conn, gint type,
                    transcript);
         }
       g_signal_emit (self, signals[SIGNAL_WS_TRANSCRIPT], 0, transcript,
-                     is_final);
+                     is_final, transcript_start_time, transcript_end_time);
     }
 
   g_object_unref (parser);

@@ -24,6 +24,7 @@ enum {
 
 enum {
   SIGNAL_WS_TRANSCRIPT,
+  SIGNAL_WS_WORD,
   N_WS_SIGNALS
 };
 

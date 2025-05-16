@@ -37,6 +37,7 @@ enum
 enum
 {
   SIGNAL_TRANSCRIPT,
+  SIGNAL_WORD,
   N_SIGNALS
 };
 
@@ -58,10 +59,16 @@ static gboolean gst_deepgram_sink_start (GstBaseSink* basesink);
 static gboolean gst_deepgram_sink_stop (GstBaseSink* basesink);
 static GstFlowReturn gst_deepgram_sink_render (GstBaseSink* basesink,
                                                GstBuffer*   buffer);
-static void          gst_deepgram_sink_on_deepgram_transcript (DeepgramWS*  ws,
-                                                               const gchar* text,
-                                                               gboolean     is_final,
-                                                               gpointer     user_data);
+static void
+gst_deepgram_sink_on_deepgram_transcript (DeepgramWS* ws, const gchar* text,
+                                          gboolean is_final, gdouble start_time,
+                                          gdouble end_time, gpointer user_data);
+
+static void gst_deepgram_sink_on_deepgram_word (DeepgramWS*  ws,
+                                                const gchar* word,
+                                                gdouble      start_time,
+                                                gdouble      end_time,
+                                                gpointer     user_data);
 
 static void
 gst_deepgram_sink_class_init (GstDeepgramSinkClass* klass)
@@ -93,7 +100,12 @@ gst_deepgram_sink_class_init (GstDeepgramSinkClass* klass)
 
   gst_deepgram_sink_signals[SIGNAL_TRANSCRIPT] = g_signal_new (
       "transcript", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
-      NULL, G_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_BOOLEAN);
+      NULL, G_TYPE_NONE, 4, G_TYPE_STRING, G_TYPE_BOOLEAN, G_TYPE_DOUBLE,
+      G_TYPE_DOUBLE);
+
+  gst_deepgram_sink_signals[SIGNAL_WORD] = g_signal_new (
+      "word", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
+      G_TYPE_NONE, 3, G_TYPE_STRING, G_TYPE_DOUBLE, G_TYPE_DOUBLE);
 
   gst_element_class_set_static_metadata (
       element_class, "DeepgramSink", "Sink/Audio",
@@ -192,6 +204,9 @@ gst_deepgram_sink_start (GstBaseSink* basesink)
                     G_CALLBACK (gst_deepgram_sink_on_deepgram_transcript),
                     self);
 
+  g_signal_connect (self->ws, "word",
+                    G_CALLBACK (gst_deepgram_sink_on_deepgram_word), self);
+
   if (!deepgram_ws_start (self->ws))
     {
       g_printerr ("[deepgramsink] Failed to start DeepgramWS.\n");
@@ -240,7 +255,8 @@ gst_deepgram_sink_render (GstBaseSink* basesink, GstBuffer* buffer)
 
 static void
 gst_deepgram_sink_on_deepgram_transcript (DeepgramWS* ws, const gchar* text,
-                                          gboolean is_final, gpointer user_data)
+                                          gboolean is_final, gdouble start_time,
+                                          gdouble end_time, gpointer user_data)
 {
   GstDeepgramSink* self = GST_DEEPGRAM_SINK (user_data);
 
@@ -251,7 +267,18 @@ gst_deepgram_sink_on_deepgram_transcript (DeepgramWS* ws, const gchar* text,
     }
 
   g_signal_emit (self, gst_deepgram_sink_signals[SIGNAL_TRANSCRIPT], 0, text,
-                 is_final);
+                 is_final, start_time, end_time);
+}
+
+static void
+gst_deepgram_sink_on_deepgram_word (DeepgramWS* ws, const gchar* word,
+                                    gdouble start_time, gdouble end_time,
+                                    gpointer user_data)
+{
+  GstDeepgramSink* self = GST_DEEPGRAM_SINK (user_data);
+
+  g_signal_emit (self, gst_deepgram_sink_signals[SIGNAL_WORD], 0, word,
+                 start_time, end_time);
 }
 
 static gboolean
